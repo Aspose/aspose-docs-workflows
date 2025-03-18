@@ -1,0 +1,64 @@
+name: Aspose-Medical-Documentation-Deployment
+on:
+  push:
+    branches:
+      - master
+    paths-ignore:
+      '.github/**'
+
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to S3 and CloudFront
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Setup Hugo
+        uses: peaceiris/actions-hugo@v2
+        with:
+          hugo-version: 'latest'
+
+      - name: Clone repositories and copy content
+        run: |
+          mkdir -p aspose-medical-docs
+          cd aspose-medical-docs
+
+          git clone https://x-access-token:${{ secrets.GITLAB_ACCESS_TOKEN }}@git.dev.dynabic.com/containerize-hugo/lutsk-aspose-prototype.git || (cd lutsk-aspose-prototype && git pull)
+
+          cd lutsk-aspose-prototype
+
+          git clone https://x-access-token:${{ secrets.GITLAB_ACCESS_TOKEN }}@git.dev.dynabic.com/containerize-hugo/lutsk-aspose-theme.git themes/lutsk-aspose-theme || (cd themes/lutsk-aspose-theme && git pull)
+
+          git clone https://x-access-token:${{ secrets.GIT_ACCESS_TOKEN }}@github.com/aspose-medical/Aspose.Medical-Documentation.git || (cd ../Aspose.Medical-Documentation && git pull)
+
+          cp -r ../Aspose.Medical-Documentation/* content/
+
+          npm install -D --save autoprefixer
+          npm install -D --save postcss-cli
+
+          rm -rf public
+          hugo --minify --baseURL https://docs-qa.aspose.com/medical
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Deploy to S3 - medical folder
+        run: |
+          aws s3 sync ./aspose-medical-docs/lutsk-aspose-prototype/public/ s3://${{ secrets.S3_BUCKET_NAME }}/medical/ --delete
+
+      - name: Invalidate CloudFront Cache - medical folder
+        run: |
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/medical/*"
