@@ -1,4 +1,4 @@
-name: Aspose-Medical-Documentation-Deployment
+name: Aspose-Medical-Documentation-Staging-Deployment 
 on:
   push:
     branches:
@@ -10,7 +10,7 @@ on:
 
 jobs:
   deploy:
-    name: Deploy to S3 and CloudFront
+    name: Deploy to S3 and CloudFront (Staging) 
     runs-on: ubuntu-latest
 
     steps:
@@ -28,7 +28,7 @@ jobs:
           hugo-version: '0.120.0'
           extended: true
 
-      - name: Clone repositories and content directly into content
+      - name: Clone repositories
         run: |
           mkdir -p aspose-medical-docs
           cd aspose-medical-docs
@@ -41,29 +41,29 @@ jobs:
 
           git clone https://x-access-token:${{ secrets.GIT_ACCESS_TOKEN }}@github.com/aspose-medical/Aspose.Medical-Documentation.git content/ || (cd content/ && git pull)
 
-          echo "Listing contents of content folder:"
+          echo "Listing contents of content folder (staging):"
           ls -l content/
 
           npm install -D --save autoprefixer
           npm install -D --save postcss-cli
 
           rm -rf public
-          hugo --minify --baseURL https://docs-qa.aspose.com/medical
+          hugo --minify --baseURL https://docs-qa.aspose.com/medical # Staging base URL
 
-          echo "Listing contents of public folder after hugo build:"
+          echo "Listing contents of public folder after hugo build (staging):"
           ls -l public/
 
-      - name: Configure AWS Credentials
+      - name: Configure AWS Credentials (Staging)
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Deploy to S3 - medical folder
+      - name: Deploy to S3 (Staging) - medical folder
         run: |
           aws s3 sync ./aspose-medical-docs/lutsk-aspose-prototype/public/ s3://${{ secrets.S3_BUCKET_NAME }}/medical/ --delete
 
-      - name: Invalidate CloudFront Cache - medical folder
+      - name: Invalidate CloudFront Cache (Staging) - medical folder
         run: |
           aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/medical/*"
