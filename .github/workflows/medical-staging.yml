@@ -41,7 +41,7 @@ jobs:
 
           git clone https://x-access-token:${{ secrets.GIT_ACCESS_TOKEN }}@github.com/aspose-medical/Aspose.Medical-Documentation.git || (cd ../Aspose.Medical-Documentation && git pull)
 
-          cp -r ../Aspose.Medical-Documentation/content/* content/
+          cp -r ../Aspose.Medical-Documentation/* content/
 
           npm install -D --save autoprefixer
           npm install -D --save postcss-cli
